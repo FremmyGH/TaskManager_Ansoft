@@ -1,0 +1,151 @@
+﻿<Window x:Class="TaskManager.View.TaskManagerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:TaskManager.View"
+        xmlns:vm="clr-namespace:TaskManager.ViewModel"
+        xmlns:conv="clr-namespace:TaskManager.Model.Converters"
+        xmlns:lib="clr-namespace:TaskManager.Model.Lib.ControlsWPF"
+        xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+        mc:Ignorable="d"
+        WindowStartupLocation="CenterScreen"
+        Title="Менеджер задач" Height="600" Width="1000" Background="#F0F0F0">
+    <Window.DataContext>
+        <vm:TaskManagerContext />
+    </Window.DataContext>
+    <i:Interaction.Triggers>
+        <!-- При загрузке окна вызываем метод LoadCommand во ViewModel -->
+        <i:EventTrigger EventName="Loaded">
+            <i:InvokeCommandAction Command="{Binding LoadTaskCommand}" />
+        </i:EventTrigger>
+    </i:Interaction.Triggers>
+
+    <Window.Resources>
+        <!-- Подключаем конвертеры (предположим, они созданы в TaskManager.Converters) -->
+        <conv:PriorityToColorConverter x:Key="PriorityColorConv"/>
+        <conv:EnumDescriptionConverter x:Key="EnumConv"/>
+        <conv:StatusToBoolConverter x:Key="StatusConv"/>
+        <conv:OverdueToBackgroundConverter x:Key="OverdueConv"/>
+        <conv:DateToStringConverter x:Key="DateToStringConv"/>
+    </Window.Resources>
+
+    <Grid Margin="15" lib:GridHelper.Rows="Auto * Auto">
+        <!-- Верхняя панель управления -->
+        <ToolBar Grid.Row="0" Style="{StaticResource FlatToolBarStyle}" ToolBarTray.IsLocked="True">
+            <!-- Группа CRUD -->
+            <Button Command="{Binding CreateCommand}" ToolTip="Создать задачу (Ctrl+N)">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE710;" FontFamily="Segoe MDL2 Assets" Foreground="Green" VerticalAlignment="Center"/>
+                    <TextBlock Text=" Создать" Margin="5,0,0,0"/>
+                </StackPanel>
+            </Button>
+            <Separator/>
+            <Button Command="{Binding EditCommand}" 
+                    CommandParameter="{Binding SelectedItem, ElementName=TasksDataGrid}"
+                    ToolTip="Редактировать выбранную">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE70F;" FontFamily="Segoe MDL2 Assets" Foreground="#FFC107" VerticalAlignment="Center"/>
+                    <TextBlock Text=" Изменить" Margin="5,0,0,0"/>
+                </StackPanel>
+            </Button>
+            <Separator/>
+            <Button Command="{Binding DeleteCommand}" 
+                    CommandParameter="{Binding SelectedItem, ElementName=TasksDataGrid}"
+                    ToolTip="Удалить выбранную (Del)">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" Foreground="Red" VerticalAlignment="Center"/>
+                    <TextBlock Text=" Удалить" Margin="5,0,0,0"/>
+                </StackPanel>
+            </Button>
+            <Separator/>
+            <!-- Статус-фильтр -->
+            <ComboBox SelectedValue="{Binding SelectedFilterStatus}" 
+                      SelectedValuePath="Content" 
+                      Width="120" VerticalContentAlignment="Center" Margin="5,0"
+                      ToolTip="Фильтр по статусу">
+                <ComboBoxItem Content="Все" IsSelected="True"/>
+                <ComboBoxItem Content="Активные"/>
+                <ComboBoxItem Content="Завершенные"/>
+            </ComboBox>
+            <Separator/>
+            <!-- Поиск (UpdateSourceTrigger=PropertyChanged для реального времени) -->
+            <StackPanel Orientation="Horizontal" Margin="5,0">
+                <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="Gray"/>
+                <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" 
+                         Width="150" VerticalContentAlignment="Center" Tag="Поиск..."/>
+            </StackPanel>
+        </ToolBar>
+
+        <DataGrid Grid.Row="1" x:Name="TasksDataGrid" 
+                  ItemsSource="{Binding TasksView}" 
+                  AutoGenerateColumns="False" 
+                  CanUserAddRows="False"
+                  IsReadOnly="True"
+                  SelectionMode="Single"
+                  AlternatingRowBackground="#FDFDFD"
+                  RowHeaderWidth="0"
+                  GridLinesVisibility="Horizontal"
+                  BorderThickness="1" BorderBrush="#DDD"
+                  Margin="0,10,0,0">
+
+            <!-- Стиль для просроченных строк -->
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                    <Setter Property="Background" Value="{Binding IsOverdue, Converter={StaticResource OverdueConv}}"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsOverdue}" Value="True">
+                            <Setter Property="ToolTip" Value="Внимание! Срок выполнения задачи истек."/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.RowStyle>
+
+            <DataGrid.Columns>
+                <DataGridTemplateColumn Header="Ok" Width="40">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <CheckBox IsChecked="{Binding Status, Mode=OneWay, Converter={StaticResource StatusConv}}" 
+                                      HorizontalAlignment="Center" VerticalAlignment="Center"
+                                      Command="{Binding DataContext.ToggleStatusCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                      CommandParameter="{Binding}"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <!-- Статус текстом -->
+                <DataGridTextColumn Header="Статус" Binding="{Binding Status, Converter={StaticResource EnumConv}}" Width="100"/>
+                <DataGridTextColumn Header="Название" Binding="{Binding Title}" Width="180" FontWeight="SemiBold"/>
+                <DataGridTextColumn Header="Описание" Binding="{Binding Description}" Width="*" Foreground="DimGray">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTemplateColumn Header="Приоритет" Width="90" SortMemberPath="Priority">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Priority, Converter={StaticResource EnumConv}}" 
+                                       Foreground="{Binding Priority, Converter={StaticResource PriorityColorConv}}" 
+                                       FontWeight="Bold" HorizontalAlignment="Center"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Срок выполнения" Binding="{Binding DueDate, StringFormat=\{0:dd.MM.yyyy\}, Converter={StaticResource DateToStringConv}}" Width="110"/>
+                <DataGridTextColumn Header="Дата создания" Binding="{Binding CreatedAt, StringFormat=\{0:dd.MM.yyyy HH:mm\}}" Width="130"/>
+            </DataGrid.Columns>
+        </DataGrid>
+        <StatusBar Grid.Row="2" Background="White" BorderBrush="#DDD" BorderThickness="0,1,0,0" Margin="-15,10,-15,-15">
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="5,0" Foreground="Gray"/>
+                    <TextBlock Text="{Binding StatusMessage}" FontSize="12" Foreground="#555"/>
+                </StackPanel>
+            </StatusBarItem>
+
+            <StatusBarItem HorizontalAlignment="Right" Margin="0,0,10,0">
+                <TextBlock Text="{Binding Tasks.Count, StringFormat='Всего задач: {0}'}" FontSize="12" Foreground="#888"/>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</Window>
