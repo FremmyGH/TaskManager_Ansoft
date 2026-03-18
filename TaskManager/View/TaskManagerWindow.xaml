@@ -34,7 +34,7 @@
         <!-- Верхняя панель управления -->
         <ToolBar Grid.Row="0" Style="{StaticResource FlatToolBarStyle}" ToolBarTray.IsLocked="True">
             <!-- Группа CRUD -->
-            <Button Command="{Binding CreateCommand}" ToolTip="Создать задачу (Ctrl+N)">
+            <Button Command="{Binding CreateCommand}" ToolTip="Создать задачу">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="&#xE710;" FontFamily="Segoe MDL2 Assets" Foreground="Green" VerticalAlignment="Center"/>
                     <TextBlock Text=" Создать" Margin="5,0,0,0"/>
